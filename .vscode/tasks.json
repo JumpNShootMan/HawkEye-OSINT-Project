@@ -1,0 +1,192 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Validate reverse image fallback",
+			"type": "shell",
+			"command": "C:/Users/ZeroRanger967/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"Session/validate_reverse_image.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Probe reverse image endpoints",
+			"type": "shell",
+			"command": "C:/Users/ZeroRanger967/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"Session/reverse_image_endpoint_probe.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Inspect Yandex snippet",
+			"type": "shell",
+			"command": "C:/Users/ZeroRanger967/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"Session/yandex_snippet_probe.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Inspect Yandex results",
+			"type": "shell",
+			"command": "C:/Users/ZeroRanger967/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"Session/yandex_result_probe.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Inspect Yandex result card",
+			"type": "shell",
+			"command": "C:/Users/ZeroRanger967/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"Session/yandex_result_snippet.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Inspect Yandex bs4 cards",
+			"type": "shell",
+			"command": "C:/Users/ZeroRanger967/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"Session/yandex_bs4_probe.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Inspect Bing reverse image",
+			"type": "shell",
+			"command": "C:/Users/ZeroRanger967/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"Session/bing_probe.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Inspect Bing cards",
+			"type": "shell",
+			"command": "C:/Users/ZeroRanger967/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"Session/bing_cards_probe.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Inspect Bing regex cards",
+			"type": "shell",
+			"command": "C:/Users/ZeroRanger967/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"Session/bing_regex_probe.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Inspect Bing snippet",
+			"type": "shell",
+			"command": "C:/Users/ZeroRanger967/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"Session/bing_snippet_probe.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Inspect Bing snippet",
+			"type": "shell",
+			"command": "C:/Users/ZeroRanger967/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"Session/bing_snippet_probe.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Inspect Bing class tag",
+			"type": "shell",
+			"command": "C:/Users/ZeroRanger967/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"Session/bing_class_probe.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Inspect Bing class regex",
+			"type": "shell",
+			"command": "C:/Users/ZeroRanger967/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"Session/bing_class_regex_probe.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Inspect Bing imgurl snippet",
+			"type": "shell",
+			"command": "C:/Users/ZeroRanger967/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"Session/bing_imgurl_probe.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Inspect Bing detail result",
+			"type": "shell",
+			"command": "C:/Users/ZeroRanger967/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"Session/bing_detail_probe.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Validate reverse image fallback",
+			"type": "shell",
+			"command": "C:/Users/ZeroRanger967/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"Session/validate_reverse_image.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Validate reverse image fallback",
+			"type": "shell",
+			"command": "C:/Users/ZeroRanger967/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+			"args": [
+				"Session/validate_reverse_image.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		}
+	]
+}
