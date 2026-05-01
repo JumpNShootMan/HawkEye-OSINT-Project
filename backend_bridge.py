@@ -29,7 +29,7 @@ import subprocess
 from html import unescape
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import quote, urljoin, urlparse
 
 import requests
 
@@ -445,6 +445,400 @@ def _run_llm_analysis(item: dict[str, Any], claim_text: str, image_metadata: dic
     parsed["raw_llm_output"] = raw_output
     return parsed
 
+
+
+
+def _is_http_url(value: str) -> bool:
+    parsed = urlparse(value or "")
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
+def _reverse_search_links(value: str = "", *, local_file: bool = False) -> dict[str, str]:
+    """Return reliable analyst-facing reverse image search links."""
+    if value and _is_http_url(value) and not local_file:
+        encoded = quote(value, safe="")
+        return {
+            "Google Lens by URL": f"https://lens.google.com/uploadbyurl?url={encoded}",
+            "TinEye by URL": f"https://tineye.com/search?url={encoded}",
+            "Yandex Images by URL": f"https://yandex.com/images/search?rpt=imageview&url={encoded}",
+            "Bing Visual Search": "https://www.bing.com/visualsearch",
+        }
+    return {
+        "Google Lens upload": "https://lens.google.com/",
+        "TinEye upload": "https://tineye.com/",
+        "Bing Visual Search upload": "https://www.bing.com/visualsearch",
+        "Yandex Images upload": "https://yandex.com/images/",
+    }
+
+
+def _resolve_public_image_url(input_url: str, logs: list[str] | None = None) -> str:
+    """
+    Accept either a direct image URL or a webpage URL and return a usable image URL.
+    This makes Wikipedia media pages and news pages easier to test from the GUI.
+    """
+    logs = logs if logs is not None else []
+    headers = {
+        "User-Agent": "Mozilla/5.0 HawkEye-OSINT-Project/1.0",
+        "Accept": "text/html,image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+    }
+    try:
+        response = requests.get(input_url, headers=headers, timeout=25, allow_redirects=True)
+        response.raise_for_status()
+        content_type = response.headers.get("Content-Type", "").lower()
+        final_url = response.url or input_url
+        if content_type.startswith("image/"):
+            logs.append(f"URL is a direct image: {final_url}")
+            return final_url
+
+        html = response.text
+        candidates = [
+            _extract_meta(html, property_name="og:image"),
+            _extract_meta(html, property_name="og:image:url"),
+            _extract_meta(html, name="twitter:image"),
+            _extract_meta(html, property_name="twitter:image"),
+        ]
+        for candidate in candidates:
+            if candidate:
+                resolved = urljoin(final_url, candidate)
+                logs.append(f"Resolved webpage URL to image URL: {resolved}")
+                return resolved
+
+        # Lightweight fallback for normal image tags.
+        m = re.search(r'<img\b[^>]+src\s*=\s*["\']([^"\']+)["\']', html, flags=re.I)
+        if m:
+            resolved = urljoin(final_url, _clean_html_text(m.group(1)))
+            logs.append(f"Resolved webpage URL using first image tag: {resolved}")
+            return resolved
+    except Exception as exc:
+        logs.append(f"Could not resolve public image URL: {exc}")
+    return input_url
+
+
+def _download_public_image(input_url: str, logs: list[str] | None = None) -> tuple[Path | None, str]:
+    """Download a public image/page image to a local Session/downloaded_images file."""
+    logs = logs if logs is not None else []
+    image_url = _resolve_public_image_url(input_url, logs)
+    headers = {"User-Agent": "Mozilla/5.0 HawkEye-OSINT-Project/1.0"}
+    try:
+        response = requests.get(image_url, headers=headers, timeout=30, allow_redirects=True)
+        response.raise_for_status()
+        content_type = response.headers.get("Content-Type", "").lower()
+        if not content_type.startswith("image/"):
+            logs.append(f"Resolved URL did not return an image Content-Type: {content_type or 'unknown'}")
+            return None, image_url
+
+        ext = mimetypes.guess_extension(content_type.split(";", 1)[0]) or Path(urlparse(image_url).path).suffix or ".img"
+        safe_ext = ext if len(ext) <= 10 else ".img"
+        out_dir = SESSION_DIR / "downloaded_images"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        digest = hashlib.sha256(image_url.encode("utf-8")).hexdigest()[:16]
+        out_path = out_dir / f"downloaded_{digest}{safe_ext}"
+        out_path.write_bytes(response.content)
+        logs.append(f"Downloaded public image for ExifTool: {out_path}")
+        return out_path, image_url
+    except Exception as exc:
+        logs.append(f"Could not download public image: {exc}")
+        return None, image_url
+
+
+def _format_reverse_search_results(result: dict[str, Any]) -> str:
+    lines: list[str] = []
+    if result.get("error"):
+        lines.append(f"ERROR: {result.get('error')}")
+    if result.get("note"):
+        lines.append(str(result.get("note")))
+    results = result.get("results") or []
+    if results:
+        lines.append("Reverse image search results:")
+        for idx, row in enumerate(results, start=1):
+            title = row.get("title") or "Untitled result"
+            link = row.get("link") or ""
+            source = row.get("source") or "unknown"
+            score = row.get("score")
+            lines.append(f"\n{idx}. {title}")
+            lines.append(f"   Source: {source}")
+            if score is not None:
+                lines.append(f"   Score: {score}")
+            if link:
+                lines.append(f"   Link: {link}")
+    manual_links = result.get("manual_upload_links") or {}
+    if manual_links:
+        lines.append("Manual reverse-image upload links:")
+        for name, link in manual_links.items():
+            lines.append(f"- {name}: {link}")
+    return "\n".join(lines).strip() or json.dumps(result, indent=2, ensure_ascii=False)
+
+
+def run_reverse_image_search(image_path_or_url: str = "", query: str = "", max_results: int = 10) -> dict[str, Any]:
+    """
+    GUI-facing reverse image search wrapper.
+
+    The existing Session/reverse_image_search.py engine expects a publicly reachable
+    image URL. A local file selected from the GUI cannot be uploaded to Google/Yandex
+    by this scraper without a real upload/API service, so local files return manual
+    provider upload links plus a clear note.
+    """
+    value = (image_path_or_url or "").strip()
+    query = (query or "").strip() or "reverse image search"
+    logs: list[str] = []
+    result: dict[str, Any] = {
+        "tool": "Reverse image search",
+        "input_image": value,
+        "query": query,
+        "results": [],
+        "manual_upload_links": {},
+        "text_output": "",
+        "logs": logs,
+    }
+
+    if not value:
+        result["error"] = "No image selected."
+        result["text_output"] = _format_reverse_search_results(result)
+        logs.append("No image input was provided.")
+        return result
+
+    if not _is_http_url(value):
+        path = Path(value).expanduser()
+        result["local_file_detected"] = True
+        result["exists"] = path.exists()
+        result["note"] = (
+            "The bundled reverse_image_search.py engine searches public image URLs. "
+            "The selected image is a local file, so the app cannot automatically submit it "
+            "to Google/Yandex/Bing without an upload/API service. Use the links below and "
+            "upload the selected image manually."
+        )
+        result["manual_upload_links"] = _reverse_search_links(value, local_file=True)
+        logs.append("Local image selected; returned manual reverse-image upload links.")
+        result["text_output"] = _format_reverse_search_results(result)
+        return result
+
+    resolved_value = _resolve_public_image_url(value, logs)
+    result["resolved_image_url"] = resolved_value
+    result["manual_upload_links"] = _reverse_search_links(resolved_value, local_file=False)
+
+    try:
+        from Session.reverse_image_search import GoogleReverseImageSearch
+
+        engine = GoogleReverseImageSearch()
+        logs.append("Loaded Session.reverse_image_search.GoogleReverseImageSearch.")
+        response = engine.response(query=query, image_url=resolved_value, max_results=max_results)
+        if isinstance(response, str):
+            result["note"] = response
+            logs.append("Reverse image search returned a string response.")
+        elif hasattr(response, "results"):
+            rows = getattr(response, "results", []) or []
+            result["results"] = rows
+            logs.append(f"Reverse image search returned {len(rows)} result(s).")
+        else:
+            result["results"] = response if isinstance(response, list) else []
+            logs.append("Reverse image search returned a nonstandard result object.")
+    except ModuleNotFoundError as exc:
+        missing = getattr(exc, "name", "") or str(exc)
+        result["error"] = (
+            f"Missing Python dependency: {missing}. Install dependencies with: "
+            "python -m pip install beautifulsoup4 requests"
+        )
+        result["note"] = (
+            "The automatic scraper could not run because a dependency is missing. "
+            "The URL-based reverse-search links below still work for manual verification."
+        )
+        logs.append(f"Reverse image search dependency missing: {missing}")
+    except Exception as exc:
+        result["error"] = str(exc)
+        result.setdefault("note", "Automatic reverse search failed; use the links below for manual verification.")
+        logs.append(f"Reverse image search failed: {exc}")
+
+    result["text_output"] = _format_reverse_search_results(result)
+    return result
+
+def run_exiftool_analysis(image_path: str = "") -> dict[str, Any]:
+    """
+    Standalone ExifTool analysis for the GUI.
+    """
+    image_path = (image_path or "").strip()
+    logs: list[str] = []
+    path = Path(image_path).expanduser()
+
+    result: dict[str, Any] = {
+        "tool": "ExifTool standalone image metadata analysis",
+        "input_image_path": image_path,
+        "exists": bool(image_path) and path.exists(),
+        "exiftool_command_found": False,
+        "basic_metadata": {},
+        "exiftool_json": {},
+        "exiftool_text": "",
+        "logs": logs,
+    }
+
+    if not image_path:
+        result["error"] = "No image selected."
+        logs.append("No image path was provided.")
+        return result
+
+    working_image_path = image_path
+    if _is_http_url(image_path):
+        downloaded_path, resolved_url = _download_public_image(image_path, logs)
+        result["input_was_url"] = True
+        result["resolved_image_url"] = resolved_url
+        if not downloaded_path:
+            result["error"] = (
+                "The URL could not be downloaded as an image. For ExifTool, use a local image file "
+                "or a direct/public image URL."
+            )
+            logs.append(result["error"])
+            return result
+        working_image_path = str(downloaded_path)
+        path = downloaded_path
+        result["downloaded_image_path"] = working_image_path
+        result["exists"] = True
+
+    if not path.exists() or not path.is_file():
+        result["error"] = "Selected image path does not exist or is not a file."
+        logs.append(result["error"])
+        return result
+
+    basic = _read_image_metadata(working_image_path)
+    result["basic_metadata"] = basic
+    logs.append("Read basic local image metadata.")
+
+    exif_cmd = _find_exiftool()
+    if not exif_cmd:
+        result["error"] = "ExifTool was not found. Confirm exiftool_files/perl.exe and exiftool.pl are present, or install exiftool globally."
+        logs.append(result["error"])
+        return result
+
+    result["exiftool_command_found"] = True
+    result["exiftool_command"] = " ".join(exif_cmd)
+
+    try:
+        json_run = subprocess.run([*exif_cmd, "-json", str(path)], text=True, capture_output=True, timeout=30, check=False)
+        logs.append(f"ExifTool JSON command finished with return code {json_run.returncode}.")
+        if json_run.returncode == 0 and json_run.stdout.strip():
+            parsed = json.loads(json_run.stdout)
+            result["exiftool_json"] = parsed[0] if isinstance(parsed, list) and parsed else parsed
+        else:
+            result["exiftool_json_error"] = json_run.stderr.strip() or "ExifTool JSON mode returned no output."
+    except Exception as exc:
+        result["exiftool_json_error"] = str(exc)
+        logs.append(f"ExifTool JSON command failed: {exc}")
+
+    try:
+        text_run = subprocess.run([*exif_cmd, str(path)], text=True, capture_output=True, timeout=30, check=False)
+        logs.append(f"ExifTool text command finished with return code {text_run.returncode}.")
+        if text_run.returncode == 0 and text_run.stdout.strip():
+            result["exiftool_text"] = text_run.stdout
+        else:
+            result["exiftool_text_error"] = text_run.stderr.strip() or "ExifTool text mode returned no output."
+    except Exception as exc:
+        result["exiftool_text_error"] = str(exc)
+        logs.append(f"ExifTool text command failed: {exc}")
+
+    if not result.get("exiftool_text") and result.get("exiftool_json"):
+        result["exiftool_text"] = json.dumps(result["exiftool_json"], indent=2, ensure_ascii=False)
+
+    return result
+
+
+
+
+def _is_public_article_url(url: str) -> bool:
+    """Return True for external article URLs that should be analyzable by HawkEye."""
+    if not url:
+        return False
+    lowered = url.lower()
+    blocked = (
+        "reddit.com", "redd.it", "facebook.com", "instagram.com",
+        "tiktok.com", "x.com", "twitter.com"
+    )
+    if any(domain in lowered for domain in blocked):
+        return False
+    return lowered.startswith("http://") or lowered.startswith("https://")
+
+
+def _extract_reddit_preview_image(data: dict[str, Any]) -> str:
+    """Best-effort extraction of a preview image URL from Reddit listing JSON."""
+    candidate_url = data.get("url_overridden_by_dest") or data.get("url") or ""
+    if str(candidate_url).lower().split("?")[0].endswith((".jpg", ".jpeg", ".png", ".jfif", ".webp")):
+        return str(candidate_url).replace("&amp;", "&")
+
+    preview = data.get("preview") or {}
+    images = preview.get("images") or []
+    if images:
+        src = (images[0].get("source") or {}).get("url") or ""
+        if src:
+            return str(src).replace("&amp;", "&")
+
+    if data.get("is_gallery") and data.get("media_metadata"):
+        for _, meta in (data.get("media_metadata") or {}).items():
+            src = (meta.get("s") or {}).get("u") or ""
+            if src:
+                return str(src).replace("&amp;", "&")
+
+    return ""
+
+
+def fetch_reddit_top_articles(
+    subreddit: str = "worldnews",
+    time_filter: str = "day",
+    limit: int = 10,
+    scan_limit: int = 50,
+) -> dict[str, Any]:
+    """Fetch top external news/article links from a subreddit using Reddit's public JSON endpoint.
+
+    The GUI lists these posts, then passes the selected source_url into run_analysis(),
+    which is the same article analysis path used by the main News URL tab.
+    """
+    subreddit = (subreddit or "worldnews").strip().lstrip("r/") or "worldnews"
+    time_filter = (time_filter or "day").strip().lower()
+    if time_filter not in {"hour", "day", "week", "month", "year", "all"}:
+        time_filter = "day"
+    limit = max(1, min(int(limit or 10), 25))
+    scan_limit = max(limit, min(int(scan_limit or 50), 100))
+
+    logs: list[str] = []
+    listing_url = f"https://www.reddit.com/r/{subreddit}/top.json"
+    params = {"t": time_filter, "limit": scan_limit, "raw_json": 1}
+    headers = {
+        "User-Agent": "HawkEye-OSINT-Project/1.0 academic GUI",
+        "Accept": "application/json,text/plain,*/*",
+    }
+
+    logs.append(f"Fetching r/{subreddit} top {time_filter} posts from Reddit JSON.")
+    response = requests.get(listing_url, headers=headers, params=params, timeout=25)
+    logs.append(f"Reddit HTTP status: {response.status_code}")
+    response.raise_for_status()
+    payload = response.json()
+
+    articles: list[dict[str, Any]] = []
+    children = payload.get("data", {}).get("children", [])
+    logs.append(f"Reddit returned {len(children)} candidate posts.")
+
+    for child in children:
+        data = child.get("data", {}) or {}
+        if data.get("is_self"):
+            continue
+
+        source_url = data.get("url_overridden_by_dest") or data.get("url") or ""
+        if not _is_public_article_url(str(source_url)):
+            continue
+
+        articles.append({
+            "id": data.get("id", ""),
+            "title": data.get("title", ""),
+            "source_url": source_url,
+            "reddit_permalink": urljoin("https://www.reddit.com", data.get("permalink", "")),
+            "subreddit": data.get("subreddit", subreddit),
+            "score": data.get("score", 0),
+            "num_comments": data.get("num_comments", 0),
+            "created_utc": data.get("created_utc"),
+            "image_url": _extract_reddit_preview_image(data),
+            "collection_method": "reddit_top_listing_json",
+        })
+        if len(articles) >= limit:
+            break
+
+    logs.append(f"Selected {len(articles)} external article links for the GUI.")
+    return {"articles": articles, "logs": logs, "subreddit": subreddit, "time_filter": time_filter}
 
 def run_analysis(
     reddit_url: str = "",
