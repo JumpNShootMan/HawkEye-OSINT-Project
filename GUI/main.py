@@ -4,6 +4,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
+<<<<<<< HEAD
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -21,10 +22,16 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+=======
+from PySide6.QtWidgets import QApplication, QFileDialog, QMainWindow, QTableWidgetItem
+
+# Allow GUI/main.py to import backend_bridge.py from the project root.
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+<<<<<<< HEAD
 from backend_bridge import (
     _download_public_image,
     _is_http_url,
@@ -33,6 +40,9 @@ from backend_bridge import (
     run_reverse_image_search,
     fetch_reddit_top_articles,
 )
+=======
+from backend_bridge import run_analysis
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
 from ui_hawkeye import Ui_MainWindow
 
 
@@ -43,6 +53,7 @@ class MainWindow(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.latest_result = None
+<<<<<<< HEAD
         self.latest_exif_result = None
         self.latest_reverse_image_result = None
         self.current_reddit_articles = []
@@ -266,10 +277,25 @@ class MainWindow(QMainWindow):
             "Choose Image for Image Work",
             "",
             "Images (*.png *.jpg *.jpeg *.jfif *.webp *.bmp *.gif *.tif *.tiff);;All Files (*)",
+=======
+
+        self.ui.runButton.clicked.connect(self.run_analysis)
+        self.ui.clearButton.clicked.connect(self.clear_fields)
+        self.ui.chooseImageButton.clicked.connect(self.choose_image)
+        self.ui.exportJsonButton.clicked.connect(self.export_json)
+
+    def choose_image(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Choose Image",
+            "",
+            "Images (*.png *.jpg *.jpeg *.jfif *.webp *.bmp);;All Files (*)",
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
         )
         if not file_path:
             return
 
+<<<<<<< HEAD
         self.exifImagePathInput.setText(file_path)
         self.update_exif_preview_from_input()
 
@@ -427,15 +453,39 @@ class MainWindow(QMainWindow):
 
     def run_analysis(self):
         self.ui.statusLabel.setText("Running analysis... (archive history + URL safety can take 1-3 minutes)")
+=======
+        self.ui.imagePathInput.setText(file_path)
+        pixmap = QPixmap(file_path)
+        if not pixmap.isNull():
+            scaled = pixmap.scaled(
+                self.ui.imagePreviewLabel.width(),
+                self.ui.imagePreviewLabel.height(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation,
+            )
+            self.ui.imagePreviewLabel.setPixmap(scaled)
+        else:
+            self.ui.imagePreviewLabel.setText("Could not preview image")
+
+    def run_analysis(self):
+        self.ui.statusLabel.setText("Running analysis...")
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
         self.ui.runProgressBar.setValue(10)
         self.ui.logsPlainTextEdit.appendPlainText("Run Analysis clicked.")
         QApplication.processEvents()
 
         reddit_url = self.ui.redditUrlInput.text().strip()
         claim_text = self.ui.claimTextInput.toPlainText().strip()
+<<<<<<< HEAD
         image_path = ""
 
         try:
+=======
+        image_path = self.ui.imagePathInput.text().strip()
+
+        try:
+            # Run the active LLM prompt path from the GUI/backend bridge.
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
             result = run_analysis(
                 reddit_url=reddit_url,
                 claim_text=claim_text,
@@ -466,6 +516,7 @@ class MainWindow(QMainWindow):
         self.populate_sources_table(manifest)
         self.populate_timeline_table(manifest)
 
+<<<<<<< HEAD
         # NEW: populate archive history + url safety tabs
         self.populate_archive_history_tab(result.get("archive_history", {}))
         self.populate_url_safety_tab(result.get("url_safety", {}))
@@ -602,6 +653,10 @@ class MainWindow(QMainWindow):
 
         self.urlSafetyDetailsTable.resizeColumnsToContents()
 
+=======
+        self.ui.mainTabs.setCurrentWidget(self.ui.verdictTab)
+
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
     def populate_sources_table(self, manifest):
         self.ui.sourcesTableWidget.setRowCount(0)
         for row, item in enumerate(manifest):
@@ -666,6 +721,7 @@ class MainWindow(QMainWindow):
         self.ui.runProgressBar.setValue(0)
         self.ui.sourcesTableWidget.setRowCount(0)
         self.ui.timelineTableWidget.setRowCount(0)
+<<<<<<< HEAD
         if hasattr(self, "redditArticlesTableWidget"):
             self.current_reddit_articles = []
             self.redditArticlesTableWidget.setRowCount(0)
@@ -685,10 +741,18 @@ class MainWindow(QMainWindow):
         self.ui.statusLabel.setText("Ready")
         self.latest_result = None
         self.latest_exif_result = None
+=======
+        self.ui.statusLabel.setText("Ready")
+        self.latest_result = None
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
+<<<<<<< HEAD
     sys.exit(app.exec())
+=======
+    sys.exit(app.exec())
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4

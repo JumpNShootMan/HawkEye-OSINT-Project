@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+<<<<<<< HEAD
 @"
 # URLhaus auth key - keep private
 .urlhaus_key
@@ -30,6 +31,9 @@ env/
 .idea/
 *.swp
 "@ | Out-File -FilePath .gitignore -Encoding utf8
+=======
+
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
 # C extensions
 *.so
 
@@ -232,6 +236,7 @@ Thumbs.db
 
 # Local ExifTool binary (Windows)
 exiftool.exe
+<<<<<<< HEAD
 
 # URLhaus auth key - keep private
 .urlhaus_key
@@ -240,3 +245,5 @@ Session/downloaded_images/
 __pycache__/
 *.pyc
 .venv/
+=======
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4

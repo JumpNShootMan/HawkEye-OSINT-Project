@@ -1,6 +1,24 @@
 """
 Backend bridge for the HawkEye GUI.
+<<<<<<< HEAD
 Now with Archive History + URL Safety integration.
+=======
+
+This file is intentionally a normal .py bridge instead of trying to execute
+POC.ipynb from the GUI. It performs the GUI-facing analysis path:
+- reads a direct news article URL
+- extracts article metadata and article text
+- uses the GUI claim/caption field as evidence to check against the article
+- reads basic local image metadata when an image is selected
+- builds and prints the exact LLM prompt
+- sends the prompt to local Ollama when enabled
+- returns a structured result the GUI can display/export
+
+Important limits:
+- Local image analysis here is metadata/EXIF/dimensions only. It does not run a
+  true reverse-image upload search for a local file.
+- Reverse-image search for article image URLs remains teammate/notebook logic.
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
 """
 
 from __future__ import annotations
@@ -15,6 +33,7 @@ import subprocess
 from html import unescape
 from pathlib import Path
 from typing import Any
+<<<<<<< HEAD
 from urllib.parse import quote, urljoin, urlparse
 
 import requests
@@ -24,6 +43,12 @@ from archive_history import fetch_archive_history as check_archive_history
 
 from url_safety import check_url_safety, format_for_prompt as format_url_safety_for_prompt
 
+=======
+from urllib.parse import urlparse
+
+import requests
+
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
 PROJECT_ROOT = Path(__file__).resolve().parent
 SESSION_DIR = PROJECT_ROOT / "Session"
 MANIFEST_JSON = SESSION_DIR / "reverse_image_manifest.json"
@@ -34,10 +59,13 @@ RESULT_JSON = PROJECT_ROOT / "hawkeye_result.json"
 OLLAMA_MODEL = "llama3"
 OLLAMA_API_URL = "http://127.0.0.1:11434/api/generate"
 
+<<<<<<< HEAD
 # Timeouts for external archive + url safety lookups
 ARCHIVE_TIMEOUT = 90
 URL_SAFETY_TIMEOUT = 120
 
+=======
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
 
 def _read_json(path: Path) -> Any:
     with path.open("r", encoding="utf-8") as f:
@@ -77,6 +105,10 @@ def _extract_title(html: str) -> str:
 
 
 def _extract_article_text(html: str, max_chars: int = 7000) -> str:
+<<<<<<< HEAD
+=======
+    """Simple dependency-light article text extraction."""
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
     cleaned = re.sub(r"<script\b.*?</script>", " ", html, flags=re.I | re.S)
     cleaned = re.sub(r"<style\b.*?</style>", " ", cleaned, flags=re.I | re.S)
     cleaned = re.sub(r"<noscript\b.*?</noscript>", " ", cleaned, flags=re.I | re.S)
@@ -143,10 +175,20 @@ def _write_manifest(items: list[dict[str, Any]]) -> None:
 
 
 def _image_size_from_header(path: Path) -> tuple[int | None, int | None]:
+<<<<<<< HEAD
     try:
         data = path.read_bytes()[:65536]
         if data.startswith(b"\x89PNG\r\n\x1a\n") and len(data) >= 24:
             return int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
+=======
+    """Best-effort PNG/JPEG dimension reader without requiring Pillow."""
+    try:
+        data = path.read_bytes()[:65536]
+        # PNG signature + IHDR width/height
+        if data.startswith(b"\x89PNG\r\n\x1a\n") and len(data) >= 24:
+            return int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
+        # JPEG SOF markers
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
         if data.startswith(b"\xff\xd8"):
             i = 2
             while i + 9 < len(data):
@@ -175,6 +217,10 @@ def _image_size_from_header(path: Path) -> tuple[int | None, int | None]:
 
 
 def _find_exiftool() -> list[str] | None:
+<<<<<<< HEAD
+=======
+    """Find exiftool locally, including the bundled Windows perl/exiftool files."""
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
     exe = shutil.which("exiftool")
     if exe:
         return [exe]
@@ -281,6 +327,7 @@ def _clamp_int(value: Any, low: int, high: int, default: int) -> int:
     return max(low, min(high, number))
 
 
+<<<<<<< HEAD
 def _format_archive_for_prompt(archive: dict[str, Any]) -> str:
     """Format archive history for LLM prompt injection."""
     s = archive.get("summary", {}) or {}
@@ -312,6 +359,9 @@ def _build_gui_llm_prompt(
     archive_history: dict[str, Any] | None = None,
     url_safety: dict[str, Any] | None = None,
 ) -> str:
+=======
+def _build_gui_llm_prompt(item: dict[str, Any], claim_text: str = "", image_metadata: dict[str, Any] | None = None) -> str:
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
     evidence = {
         "article": {
             "title": item.get("title", ""),
@@ -325,6 +375,7 @@ def _build_gui_llm_prompt(
         "selected_local_image_metadata": image_metadata or {"provided": False},
     }
 
+<<<<<<< HEAD
     archive_block = ""
     if archive_history:
         archive_block = (
@@ -339,6 +390,8 @@ def _build_gui_llm_prompt(
             + format_url_safety_for_prompt(url_safety)
         )
 
+=======
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
     return f"""
 You are a forensic news analyst for the HawkEye OSINT project.
 
@@ -352,8 +405,11 @@ Rules:
 - If a claim/caption is provided, compare it against the article title, description, and article text.
 - If local image metadata is provided, evaluate only metadata-level signals such as file type, dimensions, dates, software tags, GPS tags, or missing metadata.
 - Do not claim that the image content was visually analyzed. This bridge only performs metadata-level image checks.
+<<<<<<< HEAD
 - If archive history evidence is provided, factor it in. Many old snapshots over a long lifespan suggest a real, established article. Zero snapshots, very recent first-seen dates, or a changed title across snapshots are caution signals.
 - If URL safety evidence is provided, factor it in. A host listed in URLhaus malware database is a major red flag. A very young domain (under 30 days in CT logs) is also a caution signal.
+=======
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
 - Return ONLY valid JSON.
 
 Return JSON with these keys:
@@ -367,7 +423,11 @@ Return JSON with these keys:
 - supporting_signals: array of short strings, max 5
 
 Evidence JSON:
+<<<<<<< HEAD
 {json.dumps(evidence, ensure_ascii=False, indent=2)}{archive_block}{url_safety_block}
+=======
+{json.dumps(evidence, ensure_ascii=False, indent=2)}
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
 """.strip()
 
 
@@ -424,6 +484,7 @@ def _fallback_without_llm(item: dict[str, Any], claim_text: str, image_metadata:
     }
 
 
+<<<<<<< HEAD
 def _run_llm_analysis(
     item: dict[str, Any],
     claim_text: str,
@@ -433,12 +494,20 @@ def _run_llm_analysis(
     url_safety: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     prompt = _build_gui_llm_prompt(item, claim_text, image_metadata, archive_history, url_safety)
+=======
+def _run_llm_analysis(item: dict[str, Any], claim_text: str, image_metadata: dict[str, Any], logs: list[str]) -> dict[str, Any]:
+    prompt = _build_gui_llm_prompt(item, claim_text, image_metadata)
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
 
     print("\n===== HAWKEYE PROMPT SENT TO LLM =====", flush=True)
     print(prompt, flush=True)
     print("===== END HAWKEYE PROMPT =====\n", flush=True)
 
+<<<<<<< HEAD
     logs.append("Built LLM prompt with article + archive history + URL safety evidence.")
+=======
+    logs.append("Built LLM prompt from article evidence, claim/caption input, and image metadata.")
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
     logs.append("Prompt was printed to the terminal and included in Raw Evidence JSON.")
 
     try:
@@ -489,6 +558,7 @@ def _run_llm_analysis(
     return parsed
 
 
+<<<<<<< HEAD
 def _is_http_url(value: str) -> bool:
     parsed = urlparse(value or "")
     return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
@@ -856,6 +926,8 @@ def fetch_reddit_top_articles(
     return {"articles": articles, "logs": logs, "subreddit": subreddit, "time_filter": time_filter}
 
 
+=======
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
 def run_analysis(
     reddit_url: str = "",
     claim_text: str = "",
@@ -864,7 +936,16 @@ def run_analysis(
 ) -> dict[str, Any]:
     """
     GUI analysis function.
+<<<<<<< HEAD
     Now also runs Archive History + URL Safety lookups and injects them into the LLM prompt.
+=======
+
+    The old parameter name reddit_url is preserved to avoid changing GUI code,
+    but it is treated as a direct news article URL.
+
+    The old parameter run_notebook is preserved for compatibility. In this bridge
+    it means "run the LLM prompt path". It does not literally execute POC.ipynb.
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
     """
     article_url = (reddit_url or "").strip()
     claim_text = (claim_text or "").strip()
@@ -898,6 +979,7 @@ def run_analysis(
     if image_metadata.get("provided"):
         logs.append("Read selected local image metadata." if image_metadata.get("exists") else "Selected local image could not be read.")
 
+<<<<<<< HEAD
     # ============ ARCHIVE HISTORY LOOKUP ============
     archive_history: dict[str, Any] = {}
     archive_lookup_url = first.get("source_url") or article_url
@@ -932,6 +1014,10 @@ def run_analysis(
 
     if manifest and run_notebook:
         llm_eval = _run_llm_analysis(first, claim_text, image_metadata, logs, archive_history, url_safety)
+=======
+    if manifest and run_notebook:
+        llm_eval = _run_llm_analysis(first, claim_text, image_metadata, logs)
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
         verdict = str(llm_eval.get("verdict", "uncertain"))
         confidence = _clamp_int(llm_eval.get("confidence"), 0, 100, 0)
         explanation = (
@@ -943,9 +1029,13 @@ def run_analysis(
             f"Risk score: {llm_eval.get('integrity_risk_score', 'N/A')}\n"
             f"Reason: {llm_eval.get('reason', 'N/A')}\n\n"
             f"Claim/caption: {llm_eval.get('claim_caption_assessment', 'N/A')}\n"
+<<<<<<< HEAD
             f"Image metadata: {llm_eval.get('image_metadata_assessment', 'N/A')}\n\n"
             f"Archive snapshots: {archive_history.get('summary', {}).get('total_snapshots', 0)}\n"
             f"URL safety risk: {url_safety.get('summary', {}).get('risk_level', 'unknown')}"
+=======
+            f"Image metadata: {llm_eval.get('image_metadata_assessment', 'N/A')}"
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
         )
     elif manifest:
         llm_eval = {}
@@ -955,7 +1045,12 @@ def run_analysis(
             "The GUI loaded article data, but LLM prompt execution was disabled.\n\n"
             f"Title: {first.get('title', 'N/A')}\n"
             f"Source: {first.get('source_url', 'N/A')}\n"
+<<<<<<< HEAD
             f"Image: {first.get('image_url', 'N/A')}"
+=======
+            f"Image: {first.get('image_url', 'N/A')}\n\n"
+            "The 35% confidence value is only a placeholder in disabled-LLM mode."
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
         )
     else:
         llm_eval = {}
@@ -975,8 +1070,11 @@ def run_analysis(
         "explanation": explanation,
         "llm_evaluation": llm_eval,
         "image_metadata": image_metadata,
+<<<<<<< HEAD
         "archive_history": archive_history,
         "url_safety": url_safety,
+=======
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
         "manifest": manifest,
         "logs": logs,
         "files_checked": {
@@ -993,4 +1091,8 @@ def run_analysis(
     except Exception as exc:
         logs.append(f"Could not write result JSON: {exc}")
 
+<<<<<<< HEAD
     return result
+=======
+    return result
+>>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
