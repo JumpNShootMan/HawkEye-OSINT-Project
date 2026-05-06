@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# HawkEye Tool
-=======
 
 # 🦅 HawkEye – OSINT Media Integrity Analyzer
 
@@ -186,4 +183,3 @@ self.request_timeout      = 20   # Seconds before a request times out
 ## License
 
 See `LICENSE` for details. Bundled ExifTool and Strawberry Perl components are governed by their respective licenses in `Licenses_Strawberry_Perl.zip` and `windows_exiftool.txt`.
->>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4

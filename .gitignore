@@ -2,38 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
-<<<<<<< HEAD
-@"
-# URLhaus auth key - keep private
-.urlhaus_key
-@"
-# URLhaus auth key - keep private
-.urlhaus_key
 
-# Generated output files
-hawkeye_result.json
-
-# Downloaded images cache
-Session/downloaded_images/
-
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-
-# Virtual environment
-.venv/
-venv/
-env/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-"@ | Out-File -FilePath .gitignore -Encoding utf8
-=======
-
->>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
 # C extensions
 *.so
 
@@ -236,14 +205,8 @@ Thumbs.db
 
 # Local ExifTool binary (Windows)
 exiftool.exe
-<<<<<<< HEAD
-
-# URLhaus auth key - keep private
+# HawkEye local/private/runtime files
 .urlhaus_key
 hawkeye_result.json
 Session/downloaded_images/
-__pycache__/
 *.pyc
-.venv/
-=======
->>>>>>> 806cef15cbabf770e162c9c453b5ed07c4cce3f4
