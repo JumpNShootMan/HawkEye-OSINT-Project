@@ -1,6 +1,9 @@
 
 # 🦅 HawkEye – OSINT Media Integrity Analyzer
 
+[![Project Demo Video](https://youtube.com)](https://youtu.be/eRZslvkEk3w)
+
+
 HawkEye is a desktop GUI tool for analyzing news articles and images for potential misinformation, clickbait, or misleading content. It fetches article metadata, performs reverse image searches across Google, Yandex, and Bing, reads local image EXIF data, and sends a structured prompt to a local LLM (via [Ollama](https://ollama.com)) to produce a verdict.
 
 ---
